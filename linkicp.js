@@ -9,7 +9,7 @@
 (function() {
     // ================= 配置 =================
     const CONFIG = {
-        targetUrl: "https://xxx.mibo.im/", 
+        targetUrl: "https://andeasw.github.io/holo-permit-badge", 
         textColor: "#1d1d1f", 
         font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     };
@@ -199,4 +199,5 @@
     } else {
         initBadge();
     }
+
 })();
