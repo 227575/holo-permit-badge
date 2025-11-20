@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dimensional Permit | Magic Edition</title>
+    <title>Dimensional Permit</title>
     
     <!-- 字体引入 -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -339,20 +339,20 @@
     <script>
         /* ==========================================
            0. 智能配置中心 (Smart Config)
+           注意：{{...}} 形式的字符串是占位符，GitHub Actions 部署时会自动替换它们。
            ========================================== */
-        const USER_CONFIG = {
-            githubUrl: "https://github.com/your-username", 
-            defaultDomain: "UNCHARTED.REALM",
-            email: "__ENV_EMAIL__" 
+        const ENV_VARS = {
+            // 这些是占位符字符串，切勿随意修改，需与 .yml 文件中的 sed 命令匹配
+            rawEmail: "{{MY_EMAIL}}", 
+            rawGithub: "{{MY_GITHUB}}" 
         };
 
-        function resolveEmail() {
-            if (USER_CONFIG.email && USER_CONFIG.email !== "__ENV_EMAIL__") return USER_CONFIG.email;
-            if (window.env && window.env.EMAIL) return window.env.EMAIL;
-            if (window.ENV && window.ENV.EMAIL) return window.ENV.EMAIL;
-            return "void@dimension.null"; 
-        }
-        const FINAL_EMAIL = resolveEmail();
+        const USER_CONFIG = {
+            // 如果占位符没被替换（比如本地打开时），使用默认值；否则使用环境变量值
+            githubUrl: ENV_VARS.rawGithub.includes("{{") ? "https://github.com/your-default-id" : ENV_VARS.rawGithub,
+            email: ENV_VARS.rawEmail.includes("{{") ? "void@dimension.null" : ENV_VARS.rawEmail,
+            defaultDomain: "UNCHARTED.REALM"
+        };
 
         /* ==========================================
            1. 背景 (保持不变)
@@ -394,7 +394,7 @@
         document.addEventListener('mousemove', (e) => { const x = (window.innerWidth/2 - e.pageX) / 30; const y = (window.innerHeight/2 - e.pageY) / 30; card.style.transform = `rotateY(${x}deg) rotateX(${y}deg)`; });
 
         /* ==========================================
-           3. 业务逻辑 (ICP更新)
+           3. 业务逻辑
            ========================================== */
         class TextScramble {
             constructor(el) { this.el = el; this.chars = '!<>-_\\/[]{}—=+*^?#'; }
@@ -430,25 +430,21 @@
         const adminScrambler = new TextScramble(document.getElementById('adminVal'));
 
         function initUI() {
+            // 这里的 USER_CONFIG 已经是处理过的值了
             document.getElementById('githubBtn').href = USER_CONFIG.githubUrl;
+            
             let domain = window.location.hostname.toUpperCase().replace('WWW.','');
             if(!domain) domain = USER_CONFIG.defaultDomain;
             
-            // --- ICP 格式更新 ---
-            // 1. 生成3位随机大写字母或数字
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let randomCode = '';
             for(let i=0; i<3; i++) {
                 randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-
-            // 2. 获取日期 YYYYMMDD
             const now = new Date();
             const yyyy = now.getFullYear();
             const mm = String(now.getMonth()+1).padStart(2,'0');
             const dd = String(now.getDate()).padStart(2,'0');
-            
-            // 3. 组合
             const icp = `ICP-${randomCode}${yyyy}${mm}${dd}`;
 
             document.getElementById('dimId').innerText = Math.floor(Math.random()*9999);
@@ -472,7 +468,8 @@
 
         document.getElementById('emailBtn').addEventListener('click', function(e) {
             e.stopPropagation(); e.preventDefault();
-            navigator.clipboard.writeText(FINAL_EMAIL).then(() => {
+            // 使用 USER_CONFIG 中的 email
+            navigator.clipboard.writeText(USER_CONFIG.email).then(() => {
                 const span = this.querySelector('span'); const originalText = span.innerText; const icon = this.querySelector('i');
                 icon.className = "fas fa-check"; span.innerText = currentLang === 'en' ? "COPIED!" : "已复制!";
                 this.style.borderColor = "var(--neon-green)"; this.style.color = "var(--neon-green)";
