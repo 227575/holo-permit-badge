@@ -1,11 +1,16 @@
 name: Deploy to GitHub Pages
 
 on:
+  # 1. 监听代码推送 (兼容 main 和 master 分支)
   push:
     branches:
-      - main    # 确保这里是你仓库的主分支名 (main 或 master)
+      - main
+      - master
+  
+  # 2. 🟢 核心修复：添加手动触发按钮
+  workflow_dispatch:
 
-# 必须赋予写权限，否则无法推送到 gh-pages 分支
+# 3. 必须赋予写权限，否则无法推送到 gh-pages 分支
 permissions:
   contents: write
 
@@ -13,33 +18,40 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. 下载代码
+      # --- 第一步：下载代码 ---
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. 注入环境变量 (核心修复步骤)
+      # --- 第二步：替换变量 (带防空保护) ---
       - name: Inject Environment Variables
         env:
-          # 逻辑：优先读取 Secrets -> 其次读取 Vars -> 如果都没有，使用默认值
-          # 这样无论你在 GitHub 设置里填的是 Secret 还是 Variable 都能生效
-          REAL_EMAIL: ${{ secrets.MY_EMAIL || vars.MY_EMAIL || 'void@missing.config' }}
-          REAL_GITHUB: ${{ secrets.MY_GITHUB || vars.MY_GITHUB || 'https://github.com' }}
+          # 尝试读取 Secret，如果没有则读取 Variable
+          # 如果都没有，值为空字符串，我们在下面的 run 脚本里处理默认值
+          INPUT_EMAIL: ${{ secrets.MY_EMAIL || vars.MY_EMAIL }}
+          INPUT_GITHUB: ${{ secrets.MY_GITHUB || vars.MY_GITHUB }}
         run: |
-          echo "开始替换环境变量..."
+          echo "正在检测环境变量..."
           
-          # 使用 sed 命令替换 index.html 中的占位符
-          # 使用 | 作为分隔符，防止 URL 中的 / 导致报错
+          # Bash 逻辑：如果 INPUT_EMAIL 为空，则使用默认值
+          # :- 意思是 "如果为空，则使用后面的值"
+          REAL_EMAIL="${INPUT_EMAIL:-void@dimension.null}"
+          REAL_GITHUB="${INPUT_GITHUB:-https://github.com}"
+          
+          # 打印状态 (Secret会被自动打码显示为 ***，这是正常的)
+          echo "Injecting Email..."
+          
+          # 使用 sed 替换 index.html 中的占位符
+          # 使用 | 作为分隔符，防止 URL 中的 / 报错
           sed -i "s|{{MY_EMAIL}}|$REAL_EMAIL|g" index.html
           sed -i "s|{{MY_GITHUB}}|$REAL_GITHUB|g" index.html
           
-          echo "替换完成！"
-          # 验证一下文件是否真的变了 (只打印前20行检查，不会泄露全部敏感信息)
-          head -n 20 index.html
+          echo "替换完成！检查 index.html 前10行确认替换情况:"
+          head -n 10 index.html
 
-      # 3. 部署到 GitHub Pages
-      - name: Deploy to gh-pages branch
+      # --- 第三步：部署到 gh-pages ---
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: .           # 部署当前根目录
-          branch: gh-pages    # 部署到 gh-pages 分支 (重要！)
-          clean: true         # 每次部署前清空目标分支
+          folder: .           # 部署根目录
+          branch: gh-pages    # 推送到 gh-pages 分支
+          clean: true         # 每次清理旧文件
